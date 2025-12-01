@@ -1,4 +1,4 @@
-package `2025`.`1`
+package day1
 
 fun main() {
     val name = "Kotlin"
