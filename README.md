@@ -1,1 +1,3 @@
-# adventOfCode2025
+# adventOfCode
+
+https://adventofcode.com/
