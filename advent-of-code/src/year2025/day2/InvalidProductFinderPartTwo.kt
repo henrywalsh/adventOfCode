@@ -57,8 +57,9 @@ class InvalidProductFinderPartTwo {
             return false
         }
 
+        val current = num.toString()
         while (chunkSize > 0) {
-            if (isRepeatedChunks(num, chunkSize)) {
+            if (isRepeatedChunks(current, chunkSize)) {
                 return true
             }
 
@@ -83,8 +84,8 @@ class InvalidProductFinderPartTwo {
         return log10(num.toDouble()).toInt() + 1
     }
 
-    private fun isRepeatedChunks(num: Long, chunkSize: Int): Boolean {
-        val chunked = num.toString().chunked(chunkSize)
+    private fun isRepeatedChunks(current: String, chunkSize: Int): Boolean {
+        val chunked = current.chunked(chunkSize)
         if (chunked.size <= 1) {
             return false
         }
