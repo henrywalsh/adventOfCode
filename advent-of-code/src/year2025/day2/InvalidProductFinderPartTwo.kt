@@ -52,7 +52,7 @@ class InvalidProductFinderPartTwo {
     }
 
     private fun isRepeated(num: Long): Boolean {
-        var chunkSize = getLargestPossibleChunk(num)
+        var chunkSize = getNumDigits(num) / 2
         if (chunkSize == 0) {
             return false
         }
@@ -67,17 +67,6 @@ class InvalidProductFinderPartTwo {
         }
 
         return false
-    }
-
-    private fun getLargestPossibleChunk(num: Long): Int {
-        val digits = getNumDigits(num)
-        var largestPossibleChunk = digits / 2
-
-        while (largestPossibleChunk > 0 && digits % largestPossibleChunk != 0) {
-            largestPossibleChunk--
-        }
-
-        return largestPossibleChunk
     }
 
     private fun getNumDigits(num: Long): Int {
