@@ -3,11 +3,11 @@ package year2025.day3
 import java.io.File
 import java.io.InputStream
 
-class JoltageCalculatorPartTwo {
-    fun findJoltage(filePath: String): Long {
+class JoltageCalculator {
+    fun findJoltage(filePath: String, batteries: Int): Long {
         val banks = readBankInput(filePath)
 
-        return findJoltageForBanks(banks)
+        return findJoltageForBanks(banks, batteries)
     }
 
     private fun readBankInput(filePath: String): List<Array<Int>> {
@@ -22,34 +22,34 @@ class JoltageCalculatorPartTwo {
         return banks
     }
 
-    private fun findJoltageForBanks(banks: List<Array<Int>>): Long {
+    private fun findJoltageForBanks(banks: List<Array<Int>>, batteries: Int): Long {
         var joltage: Long = 0
 
         for (bank in banks) {
-            joltage += findJoltageForBank(bank)
+            joltage += findJoltageForBank(bank, batteries)
         }
 
         return joltage
     }
 
-    private fun findJoltageForBank(bank: Array<Int>): Long {
-        var joltage = getInitialJoltage(bank)
+    private fun findJoltageForBank(bank: Array<Int>, batteries: Int): Long {
+        var joltage = getInitialJoltage(bank, batteries)
 
-        for (i in bank.size - 1 - 12 downTo 0) {
-           if (bank[i] >= joltage[0]) {
-               joltage = adjustJoltage(joltage)
-               joltage[0] = bank[i]
-           }
+        for (i in bank.size - 1 - batteries downTo 0) {
+            if (bank[i] >= joltage[0]) {
+                joltage = adjustJoltage(joltage)
+                joltage[0] = bank[i]
+            }
         }
 
         return convertJoltageToValue(joltage)
     }
 
-    private fun getInitialJoltage(bank: Array<Int>): Array<Int> {
-        val initialJoltage: Array<Int> = Array(12) { 0 }
+    private fun getInitialJoltage(bank: Array<Int>, batteries: Int): Array<Int> {
+        val initialJoltage: Array<Int> = Array(batteries) { 0 }
 
-        for (i in 11 downTo 0) {
-            initialJoltage[i] = bank[bank.size - 12 + i]
+        for (i in batteries - 1 downTo 0) {
+            initialJoltage[i] = bank[bank.size - batteries + i]
         }
 
         return initialJoltage
