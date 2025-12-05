@@ -2,8 +2,6 @@ package year2025.day5
 
 import java.io.File
 import java.io.InputStream
-import kotlin.math.max
-import kotlin.math.min
 
 class FreshIngredientFinder {
     fun findFreshIngredients(filePath: String): Int {
@@ -20,7 +18,7 @@ class FreshIngredientFinder {
                 val min = line.substringBefore("-").toLong()
                 val max = line.substringAfter("-").toLong()
 
-                root = addTreeNode(root, TreeNode(min, max, null, null))
+                root = TreeNode.addTreeNode(root, TreeNode(min, max, null, null))
             } else if (line.isNotEmpty()) {
                 if (isFreshIngredient(root, line.toLong())) {
                     freshIngredients++
@@ -33,49 +31,29 @@ class FreshIngredientFinder {
         return freshIngredients
     }
 
-    private fun addTreeNode(node: TreeNode?, new: TreeNode): TreeNode {
-        if (node == null) {
-            return new
-        }
-
-        if (new.max > node.max) {
-            if (new.min <= node.max) {
-                node.min = min(node.min, new.min)
-                node.max = max(node.max, new.max)
-
-                return node
-            }
-
-            node.right = addTreeNode(node.right, new)
-        } else {
-            if (new.max >= node.min) {
-                node.min = min(node.min, new.min)
-                node.max = max(node.max, new.max)
-
-                return node
-            }
-
-            node.left = addTreeNode(node.left, new)
-        }
-
-        return node
-    }
-
     private fun isFreshIngredient(node: TreeNode?, id: Long): Boolean {
         if (node == null) {
             return false
         }
 
-        if (id >= node.min && id <= node.max) {
-            return true
+        return if (id >= node.min && id <= node.max) {
+            true
         } else if (id > node.max) {
-            return isFreshIngredient(node.right, id)
+            isFreshIngredient(node.right, id)
         } else {
-            return isFreshIngredient(node.left, id)
+            isFreshIngredient(node.left, id)
         }
     }
 
     fun findAmountOfFreshIngredientIds(filePath: String): Long {
+        var root: TreeNode = getInitialTree(filePath) ?: return 0
+
+        root = rebuildTreeUntilRangesUnique(root)
+
+        return countTreeRanges(root)
+    }
+
+    private fun getInitialTree(filePath: String): TreeNode? {
         var root: TreeNode? = null
 
         val inputStream: InputStream = File(filePath).inputStream()
@@ -88,7 +66,7 @@ class FreshIngredientFinder {
                 val min = line.substringBefore("-").toLong()
                 val max = line.substringAfter("-").toLong()
 
-                root = addTreeNode(root, TreeNode(min, max, null, null))
+                root = TreeNode.addTreeNode(root, TreeNode(min, max, null, null))
             } else if (line.isNotEmpty()) {
                 break
             }
@@ -96,58 +74,35 @@ class FreshIngredientFinder {
             line = bufferedReader.readLine()
         }
 
+        return root
+    }
 
-
-        var treeSize = getTreeSize(root)
+    private fun rebuildTreeUntilRangesUnique(root: TreeNode): TreeNode {
+        var node = root
+        var treeSize = TreeNode.getTreeSize(node)
+        
         while (true) {
-            if (root == null) {
-                return 0
-            }
+            var rebuiltNode = TreeNode(node.min, node.max, null, null)
 
-            var consolidatedRoot = TreeNode(root.min, root.max, null, null)
+            rebuiltNode = TreeNode.recomputeTree(rebuiltNode, node)
+            node = rebuiltNode
 
-            consolidatedRoot = rebuildTree(consolidatedRoot, root)
-            root = consolidatedRoot
-
-            val consolidatedSize = getTreeSize(root)
-            if (treeSize == consolidatedSize) {
+            val rebuiltSize = TreeNode.getTreeSize(node)
+            if (treeSize == rebuiltSize) {
                 break
             }
 
-            treeSize = consolidatedSize
+            treeSize = rebuiltSize
         }
-
-        return addNodeRanges(root)
-    }
-
-    private fun getTreeSize(node: TreeNode?): Int {
-        if (node == null) {
-            return 0
-        }
-
-        return 1 + getTreeSize(node.left) + getTreeSize(node.right)
-    }
-
-    private fun rebuildTree(root: TreeNode, new: TreeNode?): TreeNode {
-        var node = root
-
-        if (new == null) {
-            return node
-        }
-
-        node = addTreeNode(node, TreeNode(new.min, new.max, null, null))
-
-        node = rebuildTree(node, new.left)
-        node = rebuildTree(node, new.right)
 
         return node
     }
 
-    private fun addNodeRanges(node: TreeNode?): Long {
+    private fun countTreeRanges(node: TreeNode?): Long {
         if (node == null) {
             return 0
         }
 
-        return node.max - node.min + 1 + addNodeRanges(node.left) + addNodeRanges(node.right)
+        return node.max - node.min + 1 + countTreeRanges(node.left) + countTreeRanges(node.right)
     }
 }
