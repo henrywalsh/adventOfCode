@@ -4,21 +4,27 @@ import java.io.File
 import java.io.InputStream
 import java.util.PriorityQueue
 import java.util.Stack
+import kotlin.collections.iterator
+import kotlin.collections.set
 import kotlin.math.pow
 import kotlin.math.sqrt
 
 class JunctionBoxConnector {
     fun partOne(filePath: String, numConnections: Int, numCircuits: Int): Int {
+        // get boxes
         val junctionBoxes = readInput(filePath)
 
-        val circuits = findCircuitsOrderedBySize(junctionBoxes, numConnections)
+        // get shortest X connections
+        val shortestConnections = getShortestConnections(junctionBoxes, numConnections)
 
-        var answer = 1
-        for (i in 0..<numCircuits) {
-            answer *= circuits[i]
-        }
+        // get map of shortest connections
+        val connections = createMapFromConnections(shortestConnections)
 
-        return answer
+        // dfs the map to get circuit sizes
+        val circuitSizes = getOrderedCircuitSizesWithDfs(connections)
+
+        // multiple first Y items
+        return multiplySizes(circuitSizes, numCircuits)
     }
 
     private fun readInput(filePath: String): List<JunctionBox> {
@@ -40,9 +46,9 @@ class JunctionBoxConnector {
         return junctionBoxes
     }
 
-    private fun findCircuitsOrderedBySize(junctionBoxes: List<JunctionBox>, numConnections: Int): List<Int> {
+    private fun getShortestConnections(junctionBoxes: List<JunctionBox>, numConnections: Int): List<Connection> {
         val shortestConnections = PriorityQueue<Connection>{ c1, c2 ->
-            c1.distance.compareTo(c2.distance)
+            c2.distance.compareTo(c1.distance)
         }
 
         for (i in 0..<junctionBoxes.size) {
@@ -54,71 +60,66 @@ class JunctionBoxConnector {
                         getDistanceBetween(junctionBoxes[i], junctionBoxes[j])
                     )
                 )
+
+                if (shortestConnections.size > numConnections) {
+                    shortestConnections.remove()
+                }
             }
         }
 
-        val map = mutableMapOf<Int, MutableSet<Int>>()
-        for (i in 0..<junctionBoxes.size) {
-            map[i] = mutableSetOf()
-        }
+        return shortestConnections.toList()
+    }
 
-        for (i in 0..<numConnections) {
-            val connection = shortestConnections.poll()
+    private fun getDistanceBetween(a: JunctionBox, b: JunctionBox): Double {
+        return sqrt((b.x - a.x).pow(2) + (b.y - a.y).pow(2) + (b.z - a.z).pow(2))
+    }
 
-            // is this connection already in the same circuit?
-            if (map[connection.a]!!.contains(connection.b)) {
-                continue
+    private fun createMapFromConnections(shortestConnections: List<Connection>): Map<Int, Set<Int>> {
+        val connections = mutableMapOf<Int, MutableSet<Int>>()
+
+        for (shortestConnection in shortestConnections) {
+            if (connections[shortestConnection.a] == null) {
+                connections[shortestConnection.a] = mutableSetOf(shortestConnection.b)
+            } else {
+                connections[shortestConnection.a]!!.add(shortestConnection.b)
             }
 
-            map[connection.a]!!.add(connection.b)
-            map[connection.b]!!.add(connection.a)
-
-            val toVisit = mutableSetOf<Int>()
-
-            toVisit.addAll(map[connection.a]!!)
-            toVisit.addAll(map[connection.b]!!)
-
-            val newSet = mutableSetOf<Int>()
-
-            for (entry in toVisit) {
-                newSet.addAll(map[entry]!!)
-            }
-
-            for (entry in toVisit) {
-                map[entry]!!.addAll(newSet)
+            if (connections[shortestConnection.b] == null) {
+                connections[shortestConnection.b] = mutableSetOf(shortestConnection.a)
+            } else {
+                connections[shortestConnection.b]!!.add(shortestConnection.a)
             }
         }
 
-        for (entry in map) {
-            entry.value.remove(entry.key)
-        }
+        return connections
+    }
 
+    private fun getOrderedCircuitSizesWithDfs(connections: Map<Int, Set<Int>>): List<Int> {
         val circuitSizes = mutableListOf<Int>()
-        val visited = mutableSetOf<Int>()
+        val seen = mutableSetOf<Int>()
 
-        for (i in 0..<map.size) {
-            if (visited.contains(i)) {
+        for (connection in connections) {
+            if (seen.contains(connection.key)) {
                 continue
             }
 
-            visited.add(i)
+            seen.add(connection.key)
             var circuitSize = 1
 
-            val toVisit = Stack<Int>()
-            toVisit.addAll(map[i]!!)
+            val next = Stack<Int>()
+            next.addAll(connection.value)
 
-            // kind of a depth first search?
-            while (!toVisit.isEmpty()) {
-                val current = toVisit.pop()
+            while (next.isNotEmpty()) {
+                val current = next.pop()
 
-                if (visited.contains(current)) {
+                if (seen.contains(current)) {
                     continue
                 }
 
+                seen.add(current)
                 circuitSize++
 
-                visited.add(current)
-                toVisit.addAll(map[current]!!)
+                next.addAll(connections[current]!!)
             }
 
             circuitSizes.add(circuitSize)
@@ -127,20 +128,54 @@ class JunctionBoxConnector {
         return circuitSizes.sortedDescending()
     }
 
-    private fun getDistanceBetween(a: JunctionBox, b: JunctionBox): Double {
-        return sqrt((b.x - a.x).pow(2) + (b.y - a.y).pow(2) + (b.z - a.z).pow(2))
+    private fun multiplySizes(orderedCircuits: List<Int>, limit: Int): Int {
+        var answer = 1
+
+        for (i in 0..<limit) {
+            if (i >= orderedCircuits.size) {
+                return answer
+            }
+
+            answer *= orderedCircuits[i]
+        }
+
+        return answer
     }
 
     fun partTwo(filePath: String): Long {
         val junctionBoxes = readInput(filePath)
+        val allConnections = getAllConnections(junctionBoxes)
 
-        val shortestConnections = PriorityQueue<Connection>{ c1, c2 ->
-            c1.distance.compareTo(c2.distance)
+        val map = mutableMapOf<Int, MutableSet<Int>>()
+
+        for (connection in allConnections) {
+            if (map[connection.a] == null) {
+                map[connection.a] = mutableSetOf(connection.b)
+            } else {
+                map[connection.a]!!.add(connection.b)
+            }
+
+            if (map[connection.b] == null) {
+                map[connection.b] = mutableSetOf(connection.a)
+            } else {
+                map[connection.b]!!.add(connection.a)
+            }
+
+            val size = getMapSize(map)
+            if (size == junctionBoxes.size) {
+                return (junctionBoxes[connection.a].x * junctionBoxes[connection.b].x).toLong()
+            }
         }
+
+        return 0
+    }
+
+    private fun getAllConnections(junctionBoxes: List<JunctionBox>): List<Connection> {
+        val allConnections = mutableListOf<Connection>()
 
         for (i in 0..<junctionBoxes.size) {
             for (j in i+1..<junctionBoxes.size) {
-                shortestConnections.add(
+                allConnections.add(
                     Connection(
                         i,
                         j,
@@ -150,42 +185,33 @@ class JunctionBoxConnector {
             }
         }
 
-        val map = mutableMapOf<Int, MutableSet<Int>>()
-        for (i in 0..<junctionBoxes.size) {
-            map[i] = mutableSetOf()
+        return allConnections.sortedBy { it.distance }
+    }
+
+    private fun getMapSize(map: Map<Int, Set<Int>>): Int {
+        if (map[0] == null) {
+            return 0
         }
 
-        while (!shortestConnections.isEmpty()) {
-            val connection = shortestConnections.poll()
+        val seen = mutableSetOf(0)
 
-            // is this connection already in the same circuit?
-            if (map[connection.a]!!.contains(connection.b)) {
+        val next = Stack<Int>()
+        next.addAll(map[0]!!)
+
+        var size = 1
+        while (next.isNotEmpty()) {
+            val current = next.pop()
+
+            if (seen.contains(current)) {
                 continue
             }
 
-            map[connection.a]!!.add(connection.b)
-            map[connection.b]!!.add(connection.a)
+            seen.add(current)
+            size++
 
-            val toVisit = mutableSetOf<Int>()
-
-            toVisit.addAll(map[connection.a]!!)
-            toVisit.addAll(map[connection.b]!!)
-
-            val newSet = mutableSetOf<Int>()
-
-            for (entry in toVisit) {
-                newSet.addAll(map[entry]!!)
-            }
-
-            for (entry in toVisit) {
-                map[entry]!!.addAll(newSet)
-            }
-
-            if (map[connection.a]!!.size == junctionBoxes.size) {
-                return (junctionBoxes[connection.a].x * junctionBoxes[connection.b].x).toLong()
-            }
+            next.addAll(map[current]!!)
         }
 
-        return 0
+        return size
     }
 }
